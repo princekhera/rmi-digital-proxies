@@ -28,6 +28,7 @@ if not UIDS:
 rule all:
     input:
         f"{OUT}/report.md",
+        f"{OUT}/checks/verification.md",
 
 
 rule sl_features:
@@ -98,10 +99,41 @@ rule depresjon:
     output:
         metrics=f"{OUT}/tables/depresjon_rhythm_metrics.csv",
         tests=f"{OUT}/tables/depresjon_tests.csv",
+        inpatient_summary=f"{OUT}/tables/depresjon_inpatient_summary.csv",
     params:
-        src=SRC, dep_dir=DEP,
+        src=SRC, dep_dir=DEP, cfg=config,
     script:
         "workflow/scripts/depresjon.py"
+
+
+rule missingness:
+    """Is losing days to missing data related to depression scores?"""
+    input:
+        daily=expand(f"{OUT}/interim/features/{{uid}}.csv", uid=UIDS),
+        panel=rules.sl_panel.output.panel,
+        person=rules.sl_panel.output.person,
+    output:
+        per_person=f"{OUT}/tables/missingness_per_person.csv",
+        tests=f"{OUT}/tables/missingness_tests.csv",
+    params:
+        src=SRC, cfg=config,
+    script:
+        "workflow/scripts/missingness.py"
+
+
+rule verify:
+    """Checks on outcome coding, duplicate rows and participant IDs."""
+    input:
+        daily=expand(f"{OUT}/interim/features/{{uid}}.csv", uid=UIDS),
+        panel=rules.sl_panel.output.panel,
+        person=rules.sl_panel.output.person,
+        mixed=rules.mixed_models.output[0],
+    output:
+        f"{OUT}/checks/verification.md",
+    params:
+        src=SRC, sl_dir=SL, cfg=config,
+    script:
+        "workflow/scripts/verify.py"
 
 
 rule report:
@@ -111,6 +143,8 @@ rule report:
         phq=rules.phq_anchor.output[0],
         ml=rules.ml_loso.output[0],
         dep_tests=rules.depresjon.output.tests,
+        dep_inpatient=rules.depresjon.output.inpatient_summary,
+        miss=rules.missingness.output.tests,
         construct="config/construct_validity.tsv",
     output:
         f"{OUT}/report.md",

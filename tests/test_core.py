@@ -56,3 +56,37 @@ def test_within_component_has_zero_person_means():
     b, w = within_between(df, "x")
     assert w.groupby(df["uid"]).mean().abs().max() < 1e-12
     assert b.groupby(df["uid"]).nunique().max() == 1
+
+
+# --- added: divergent flag, random-slope LRT, partial Spearman -------------
+from rmi.models import flag_divergent, partial_spearman_boot, slope_lrt_p  # noqa: E402
+
+
+def _row(beta, lo, hi):
+    return pd.Series({"beta_std": beta, "ci_low": lo, "ci_high": hi})
+
+
+def test_divergent_requires_both_cis_to_exclude_zero():
+    assert flag_divergent(_row(0.3, 0.1, 0.5), _row(-0.4, -0.6, -0.2))
+    assert not flag_divergent(_row(0.03, -0.1, 0.16), _row(-0.02, -0.07, 0.03))  # noise
+    assert not flag_divergent(_row(0.3, 0.1, 0.5), _row(-0.05, -0.12, 0.02))     # one clear, one not
+    assert not flag_divergent(_row(0.3, 0.1, 0.5), _row(0.2, 0.1, 0.3))          # same sign
+
+
+def test_slope_lrt_mixture_pvalue():
+    lr, p = slope_lrt_p(-100.0, -100.0)
+    assert lr == 0 and p == pytest.approx(1.0)
+    _, p_small = slope_lrt_p(-90.0, -100.0)          # LR = 20
+    assert p_small < 0.001
+    _, p_neg = slope_lrt_p(-100.5, -100.0)            # optimiser noise -> LR clipped at 0
+    assert p_neg == pytest.approx(1.0)
+
+
+def test_partial_spearman_removes_confounder():
+    rng = np.random.default_rng(1)
+    z = rng.integers(0, 2, 200).astype(float)          # e.g. inpatient
+    x = z * 2 + rng.normal(0, 0.3, 200)                # both driven by z only
+    y = z * 2 + rng.normal(0, 0.3, 200)
+    raw = np.corrcoef(x, y)[0, 1]
+    r, lo, hi, p, n = partial_spearman_boot(x, y, z, n_boot=200)
+    assert raw > 0.8 and abs(r) < 0.2

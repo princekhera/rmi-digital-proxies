@@ -27,7 +27,7 @@ def studentlife(root, n_users=14, n_days=25):
         home = np.array([43.70, -72.29]) + rng.normal(0, 0.01, 2)
         places = home + rng.normal(0, 0.02, (3, 2))
         person_home = rng.uniform(0.45, 0.85)
-        gps, act, conv, lock, dark, pam, stress = [], [], [], [], [], [], []
+        gps, act, conv, lock, dark, pam, stress, mood = [], [], [], [], [], [], [], []
         for d in range(n_days):
             day0 = start + pd.Timedelta(days=d)
             p_day = np.clip(person_home + rng.normal(0, 0.12), 0.05, 0.98)
@@ -54,18 +54,25 @@ def studentlife(root, n_users=14, n_days=25):
                 r = int((day0 + pd.Timedelta(hours=rng.uniform(10, 22))).timestamp())
                 pam.append({"picture_idx": str(rng.integers(0, 4) * 4 + vcol + 1), "resp_time": r})
             stress.append({"level": str(rng.integers(1, 6)), "resp_time": int((day0 + pd.Timedelta(hours=20)).timestamp())})
+            happy = int(np.clip(np.round(val + rng.normal(0, 0.5)) - 1, 0, 4))
+            mood.append({"happyornot": "1" if happy > 0 else "2", "happy": str(max(happy, 1)),
+                         "sadornot": "2", "resp_time": int((day0 + pd.Timedelta(hours=18)).timestamp())})
         cols = "time,provider,network_type,accuracy,latitude,longitude,altitude,bearing,speed,travelstate".split(",")
         pd.DataFrame(gps, columns=cols).to_csv(f"{root}/sensing/gps/gps_{uid}.csv", index=False)
         pd.DataFrame(act, columns=["timestamp", " activity inference"]).to_csv(f"{root}/sensing/activity/activity_{uid}.csv", index=False)
         pd.DataFrame(conv, columns=["start_timestamp", " end_timestamp"]).to_csv(f"{root}/sensing/conversation/conversation_{uid}.csv", index=False)
         pd.DataFrame(lock, columns=["start", "end"]).to_csv(f"{root}/sensing/phonelock/phonelock_{uid}.csv", index=False)
         pd.DataFrame(dark, columns=["start", "end"]).to_csv(f"{root}/sensing/dark/dark_{uid}.csv", index=False)
-        for q, data in (("PAM", pam), ("Stress", stress)):
+        for q, data in (("PAM", pam), ("Stress", stress), ("Mood", mood)):
             os.makedirs(f"{root}/EMA/response/{q}", exist_ok=True)
             json.dump(data, open(f"{root}/EMA/response/{q}/{q}_{uid}.json", "w"))
         opts = ["Not at all", "Several days", "More than half the days", "Nearly every day"]
         for typ in ("pre", "post"):
             phq_rows.append([uid, typ] + [opts[rng.integers(0, 4)] for _ in range(9)] + ["Somewhat difficult"])
+    json.dump([{"name": "Stress", "questions": [{"question_id": "level", "options":
+               "[1]A little stressed, [2]Definitely stressed, [3]Stressed out, [4]Feeling good, [5]Feeling great"}]},
+               {"name": "PAM", "questions": [{"question_id": "picture_idx", "options": "16 photos"}]}],
+              open(f"{root}/EMA/EMA_definition.json", "w"))
     items = [f"item{i}" for i in range(1, 10)]
     pd.DataFrame(phq_rows, columns=["uid", "type"] + items + ["Response"]).to_csv(f"{root}/survey/PHQ-9.csv", index=False)
 
@@ -76,14 +83,18 @@ def depresjon(root, n_each=10, n_days=10):
         os.makedirs(f"{root}/{group}", exist_ok=True)
         for i in range(1, n_each + 1):
             madrs = rng.integers(12, 35) if group == "condition" else np.nan
+            # More severe patients are more often inpatients (code 1), and
+            # ward routine makes their activity more regular (less noise).
+            inpatient = (1 if madrs > 24 else 2) if group == "condition" else np.nan
+            noise = 40 if inpatient == 1 else 80
             amp = 300 - (5 * madrs if group == "condition" else 0)
             t = pd.date_range("2003-05-07 12:00", periods=n_days * 1440, freq="min")
             h = t.hour + t.minute / 60
-            act = np.clip(amp * (np.sin((h - 9) / 24 * 2 * np.pi) + 0.6) + rng.normal(0, 80, len(t)), 0, None)
+            act = np.clip(amp * (np.sin((h - 9) / 24 * 2 * np.pi) + 0.6) + rng.normal(0, noise, len(t)), 0, None)
             pd.DataFrame({"timestamp": t.strftime("%Y-%m-%d %H:%M:%S"), "date": t.strftime("%Y-%m-%d"),
                           "activity": act.round()}).to_csv(f"{root}/{group}/{group}_{i}.csv", index=False)
             rows.append({"number": f"{group}_{i}", "days": n_days, "gender": rng.integers(1, 3),
-                         "age": "35-39", "madrs1": madrs, "madrs2": madrs})
+                         "age": "35-39", "inpatient": inpatient, "madrs1": madrs, "madrs2": madrs})
     pd.DataFrame(rows).to_csv(f"{root}/scores.csv", index=False)
 
 

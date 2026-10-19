@@ -35,12 +35,18 @@ outcomes:
 
 random_slope: true
 
-# ASSUMPTION - verify against Pollak et al. (2011) before interpreting.
+# Valence direction CHECKED EMPIRICALLY (no published mapping found):
+# within-person r(valence, stress) = -0.39 on the real data, as expected.
+# Arousal direction is NOT verified: do not report arousal results.
 pam_layout:
   valence_axis: col         # columns run negative -> positive valence
   arousal_top_high: true    # top row = high arousal
 
 # StudentLife stress EMA codes (1 a little stressed, 2 definitely stressed,
 # 3 stressed out, 4 feeling good, 5 feeling great), recoded so that
-# higher = more stressed. ASSUMPTION - check EMA_definition.json.
+# higher = more stressed. CONFIRMED against EMA/EMA_definition.json.
 stress_recode: {1: 3, 2: 4, 3: 5, 4: 2, 5: 1}
+
+# Depresjon scores.csv 'inpatient' column: which code means inpatient.
+# CONFIRMED (1 = inpatient, 2 = outpatient) from datasets.simula.no/depresjon.
+depresjon_inpatient_value: 1

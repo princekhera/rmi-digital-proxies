@@ -34,6 +34,21 @@ Depresjon raw ──────────────────────
 6. **Construct validity table** (`config/construct_validity.tsv`): for each feature, the
    RM&I process it is claimed to proxy, competing explanations, and what would validate it.
 
+## Checks before interpreting (v2)
+
+- `results/checks/verification.md` prints the Stress and PAM definitions from `EMA_definition.json`,
+  raw answer counts, and **empirical sign checks** on the coding: valence and stress should move in
+  opposite directions, valence should be lower and stress higher in people with higher PHQ-9. The PAM
+  grid is scored both ways so a swapped mapping shows up. It also lists model rows that are identical
+  at full precision, near-duplicate features (|r| > 0.95), and participants with the least data.
+- `results/tables/missingness_tests.csv`: does data completeness correlate with PHQ-9?
+- Depresjon inpatient sensitivity: MADRS correlations adjusted for inpatient status (partial Spearman),
+  inpatients vs outpatients, and outpatients vs controls, with FDR applied within that family.
+- `divergent` now fires only when within and between estimates have opposite signs **and** both CIs
+  exclude zero.
+- Random-slope likelihood-ratio tests (`slope_lrt_p`, `slope_lrt_p_fdr`) test whether person-to-person
+  variation in within-person slopes is real.
+
 ## Run
 
 ```bash
@@ -49,11 +64,19 @@ snakemake -c4
 
 Unit tests: `pytest -q tests`
 
-## Assumptions to check on real data
+## Coding checks and remaining assumptions
 
-- **PAM grid orientation** (`pam_layout`) and **stress recode** (`stress_recode`) are
-  configurable. Verify both against Pollak et al. (2011) and `EMA/EMA_definition.json`.
-- **Coverage gate**: person-days with < 18 h of GPS samples are dropped. Missingness is
-  unlikely to be random, so report how many days this removes.
+| Item | Status | Evidence |
+| --- | --- | --- |
+| Stress recode (`stress_recode`) | Confirmed | Matches the codes in `EMA/EMA_definition.json` |
+| PAM valence direction (`pam_layout`) | Checked empirically | Within-person r(valence, stress) = -0.39; Mood-question cross-check in `results/checks/verification.md` |
+| PAM arousal direction | **Not verified** | No published mapping found; arousal is not reported |
+| Depresjon inpatient code | Confirmed | 1 = inpatient, 2 = outpatient ([dataset page](https://datasets.simula.no/depresjon/)) |
+| Participants | Confirmed | 49 IDs in the public archive (u00-u59 with gaps); the paper reports 48 |
+
+Still assumptions:
+
+- **Coverage gate**: person-days with < 18 h of GPS samples are dropped. `missingness_tests.csv`
+  tests whether data loss relates to PHQ-9.
 - **Night-time phone use** treats any unlocked time as use, so it is only meaningful on
   high-coverage days.
