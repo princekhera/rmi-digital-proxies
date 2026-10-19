@@ -1,0 +1,11 @@
+name: rmi-proxies
+channels: [conda-forge, bioconda]
+dependencies:
+  - python=3.12
+  - snakemake>=8
+  - pandas>=2.1
+  - numpy
+  - scipy
+  - scikit-learn
+  - statsmodels>=0.14
+  - pytest

@@ -1,0 +1,46 @@
+# Paths to the raw data. StudentLife: dataset/ folder from
+# https://studentlife.cs.dartmouth.edu/dataset/dataset.tar.bz2
+# Depresjon: unzip from https://zenodo.org/record/1219550
+studentlife_dir: data/raw/studentlife/dataset
+depresjon_dir: data/raw/depresjon
+out_dir: results
+
+tz: America/New_York        # Dartmouth local time
+day_start_hour: 4           # a 'study day' runs 04:00-04:00
+night_start_hour: 23
+night_end_hour: 4
+min_coverage_hours: 18      # drop person-days with < 18 h of GPS samples
+
+# GPS / clustering
+gps_max_accuracy_m: 100
+gps_max_gap_min: 30
+stationary_speed_ms: 1.0
+dbscan_eps_m: 100
+dbscan_min_samples: 5
+
+features:
+  - home_frac
+  - loc_entropy
+  - loc_var
+  - n_places
+  - distance_km
+  - active_frac
+  - conv_min
+  - night_phone_use_min
+  - dark_min
+
+outcomes:
+  - valence
+  - stress
+
+random_slope: true
+
+# ASSUMPTION - verify against Pollak et al. (2011) before interpreting.
+pam_layout:
+  valence_axis: col         # columns run negative -> positive valence
+  arousal_top_high: true    # top row = high arousal
+
+# StudentLife stress EMA codes (1 a little stressed, 2 definitely stressed,
+# 3 stressed out, 4 feeling good, 5 feeling great), recoded so that
+# higher = more stressed. ASSUMPTION - check EMA_definition.json.
+stress_recode: {1: 3, 2: 4, 3: 5, 4: 2, 5: 1}

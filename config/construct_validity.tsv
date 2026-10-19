@@ -1,0 +1,8 @@
+Feature	Claimed RM&I process	Competing explanations	What would validate it
+home_frac (time at home)	Reduced approach motivation / reward-seeking	Exams, weather, introversion, remote teaching, illness	Within-person covariation with effort-based choice (EEfRT) on repeated testing days; association with striatal reward response
+loc_entropy (spread of time across places)	Exploration vs exploitation	Fixed timetable, income, transport access, term week	Correlation with exploration parameters from a bandit task; stability across comparable weeks
+n_places / distance_km	Reward-seeking behaviour, behavioural activation	Commuting, errands, job duties	Separate discretionary from obligatory places (e.g. by time of day or place type) and test which drives mood
+conv_min (ambient conversation)	Social reward / social approach	Detected speech is not the user talking; shared housing; lectures	Wearer-voice detection; comparison with self-reported social enjoyment and social reward tasks
+night_phone_use_min	Impulsivity / poor inhibitory control	Insomnia, shift patterns, messaging norms, phone used as an alarm	Association with delay discounting and stop-signal performance after adjusting for sleep
+circadian_movement / IS / IV	Motivation (arguably)	Mostly sleep and routine; strongly shaped by timetable	Treat as a confounder or separate construct unless it predicts RM&I tasks beyond sleep measures
+active_frac (physical activity)	Behavioural activation, effort expenditure	Fitness, injury, weather, sport schedules	Effort-discounting task performance; change with behavioural activation therapy

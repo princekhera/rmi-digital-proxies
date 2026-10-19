@@ -1,0 +1,4 @@
+# Overrides for the synthetic smoke test (python tests/make_synthetic.py).
+studentlife_dir: data/synthetic/studentlife/dataset
+depresjon_dir: data/synthetic/depresjon
+out_dir: results_synthetic

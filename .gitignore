@@ -1,0 +1,8 @@
+data/
+results/
+results_synthetic/
+.snakemake/
+__pycache__/
+*.pyc
+.DS_Store
+Miniforge3-*.sh
