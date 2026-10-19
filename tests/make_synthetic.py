@@ -77,24 +77,29 @@ def studentlife(root, n_users=14, n_days=25):
     pd.DataFrame(phq_rows, columns=["uid", "type"] + items + ["Response"]).to_csv(f"{root}/survey/PHQ-9.csv", index=False)
 
 
-def depresjon(root, n_each=10, n_days=10):
+def depresjon(root, n_each=10):
+    """Planted structure mirrors the work-status hypothesis: people in work
+    have a weekday/weekend difference (lower interdaily stability); more
+    severe patients are more often on sick leave (work = 2). Recording
+    lengths vary between 8 and 16 days."""
     rows = []
     for group in ("condition", "control"):
         os.makedirs(f"{root}/{group}", exist_ok=True)
         for i in range(1, n_each + 1):
             madrs = rng.integers(12, 35) if group == "condition" else np.nan
-            # More severe patients are more often inpatients (code 1), and
-            # ward routine makes their activity more regular (less noise).
-            inpatient = (1 if madrs > 24 else 2) if group == "condition" else np.nan
-            noise = 40 if inpatient == 1 else 80
+            inpatient = (1 if madrs > 30 else 2) if group == "condition" else np.nan
+            work = (2 if madrs > 22 else 1) if group == "condition" else (1 if rng.random() < 0.85 else 2)
+            n_days = int(rng.integers(8, 17))
             amp = 300 - (5 * madrs if group == "condition" else 0)
             t = pd.date_range("2003-05-07 12:00", periods=n_days * 1440, freq="min")
             h = t.hour + t.minute / 60
-            act = np.clip(amp * (np.sin((h - 9) / 24 * 2 * np.pi) + 0.6) + rng.normal(0, noise, len(t)), 0, None)
+            shift = np.where((t.dayofweek >= 5) & (work == 1), 3.0, 0.0)  # weekend lie-in for workers
+            act = np.clip(amp * (np.sin((h - 9 - shift) / 24 * 2 * np.pi) + 0.6) + rng.normal(0, 80, len(t)), 0, None)
             pd.DataFrame({"timestamp": t.strftime("%Y-%m-%d %H:%M:%S"), "date": t.strftime("%Y-%m-%d"),
                           "activity": act.round()}).to_csv(f"{root}/{group}/{group}_{i}.csv", index=False)
             rows.append({"number": f"{group}_{i}", "days": n_days, "gender": rng.integers(1, 3),
-                         "age": "35-39", "inpatient": inpatient, "madrs1": madrs, "madrs2": madrs})
+                         "age": "35-39", "inpatient": inpatient, "work": work,
+                         "madrs1": madrs, "madrs2": madrs})
     pd.DataFrame(rows).to_csv(f"{root}/scores.csv", index=False)
 
 

@@ -29,6 +29,18 @@ cv = pd.read_csv(snakemake.input.construct, sep="\t")
 miss = pd.read_csv(snakemake.input.miss)
 dep_in = pd.read_csv(snakemake.input.dep_inpatient)
 
+
+def read_or_empty(path):
+    try:
+        return pd.read_csv(path)
+    except pd.errors.EmptyDataError:
+        return pd.DataFrame()
+
+
+slope_sum = read_or_empty(snakemake.input.slope_summary)
+slope_mod = read_or_empty(snakemake.input.slope_mod)
+dep_conf = pd.read_csv(snakemake.input.dep_confound)
+
 L = ["# Digital proxies of reward, motivation and impulsivity: StudentLife + Depresjon\n"]
 L.append("## 1. Data\n")
 L.append(md_table(pd.DataFrame([summary]).T.reset_index().rename(columns={"index": "quantity", 0: "value"})))
@@ -59,6 +71,25 @@ lrt = mm[(mm.level == "within") & mm.slope_lrt_p.notna()][["outcome", "feature",
 L.append(md_table(lrt[lrt.slope_lrt_p_fdr < 0.10].sort_values("slope_lrt_p")))
 L.append(f"\n{int((lrt.slope_lrt_p_fdr < 0.10).sum())} of {len(lrt)} random-slope tests pass FDR < 0.10.\n")
 
+L.append("\n### Person-specific slopes\n")
+L.append("For each model whose slope variation passed FDR < 0.05: the spread of person-specific slopes (shrunken "
+         "estimates), how many people go against the average, and whether the variation survives dropping the two "
+         "most extreme people. Plot: `figures/person_slopes.png`.\n\n")
+if len(slope_sum):
+    L.append(md_table(slope_sum))
+else:
+    L.append("_No model passed the threshold._\n")
+L.append("\n### Does depression predict a person's slope?\n")
+L.append("`interaction` is the cross-level interaction (within-feature x PHQ-9, standardised) in the mixed model: how "
+         "much a person's slope changes per 1 SD higher PHQ-9. PHQ-9 at the start of term precedes the daily data; the "
+         "end-of-term score is secondary. `rho_slope_vs_phq` is a descriptive check on the shrunken slopes. "
+         "BH-FDR across these tests.\n\n")
+if len(slope_mod):
+    t = slope_mod.copy()
+    t["95% CI"] = t.apply(lambda r: f"[{r.ci_low:.2f}, {r.ci_high:.2f}]", axis=1)
+    t["rho 95% CI"] = t.apply(lambda r: f"[{r.rho_ci_low:.2f}, {r.rho_ci_high:.2f}]", axis=1)
+    L.append(md_table(t.drop(columns=["ci_low", "ci_high", "rho_ci_low", "rho_ci_high"])))
+
 L.append("\n## 3. Person-level anchor: feature means vs post-term PHQ-9\n")
 L.append("Exploratory. n is small; read the CI widths, not the p-values.\n\n")
 if len(phq):
@@ -80,11 +111,19 @@ L.append("Between-person only (one recording block per participant). MADRS corre
 L.append("### Original analyses\n")
 L.append(md_table(ci(dep[dep.family == "original"].drop(columns="family"), "estimate")))
 L.append("\n### Inpatient sensitivity analyses\n")
-L.append("Hospital wards impose fixed routines, which could make inpatients look more regular. These tests adjust "
-         "for, or stratify by, inpatient status. FDR is applied within this family separately.\n\n")
+L.append("Hypothesis tested: ward routines make inpatients look more regular. Inpatient code confirmed from the dataset "
+         "page (1 = inpatient). FDR within this family.\n\n")
 L.append(md_table(dep_in))
 L.append("\n")
 L.append(md_table(ci(dep[dep.family == "inpatient_sensitivity"].drop(columns="family"), "estimate")))
+L.append("\n### Work status and recording length\n")
+L.append("Two further explanations. (i) People in work have weekday/weekend differences, which lowers interdaily "
+         "stability; patients on sick leave may live more uniform days. (ii) Recording length varies, and rhythm "
+         "metrics from fewer days are less reliable. Tests adjust for these (rank partial correlation) or compare "
+         "everyone on the same number of days. FDR within this family.\n\n")
+L.append(md_table(dep_conf))
+L.append("\n")
+L.append(md_table(ci(dep[dep.family == "confound_sensitivity"].drop(columns="family"), "estimate")))
 
 L.append("\n## 6. Construct validity of each proxy\n")
 L.append(md_table(cv))
@@ -96,9 +135,10 @@ L.append(
     "those tasks engage. That anchoring is the work this analysis cannot do with public data.\n")
 
 L.append("\n## 7. Limitations\n")
-L.append("- StudentLife: 48 students, one term, one campus; not a clinical sample.\n"
-         "- Missing sensor data is unlikely to be random (people who feel low may stop charging or carrying the phone).\n"
+L.append("- StudentLife: 49 participant IDs in the public archive (the paper reports 48), one term, one campus; not a clinical sample.\n"
+         "- Data completeness showed no detectable relationship with PHQ-9 (see missingness table), but with n = 38-46 a moderate relationship cannot be ruled out.\n"
          "- Next-day models are weak temporal evidence, not causal estimates.\n"
-         "- The PAM grid mapping, stress recode and Depresjon inpatient code are configurable assumptions; "
-         "see config.yaml and results/checks/verification.md.\n")
+         "- Stress coding and the Depresjon inpatient code are confirmed from the dataset documentation. PAM valence "
+         "direction is checked empirically (against stress and the separate Mood question); PAM arousal is not "
+         "verified and is not reported. See results/checks/verification.md.\n")
 open(snakemake.output[0], "w").write("\n".join(L))

@@ -50,3 +50,11 @@ stress_recode: {1: 3, 2: 4, 3: 5, 4: 2, 5: 1}
 # Depresjon scores.csv 'inpatient' column: which code means inpatient.
 # CONFIRMED (1 = inpatient, 2 = outpatient) from datasets.simula.no/depresjon.
 depresjon_inpatient_value: 1
+
+# Random-slope models with slope-variance FDR below this get a
+# person-specific slope analysis (slope_heterogeneity rule).
+slope_fdr_threshold: 0.05
+
+# Depresjon: compare everyone on their first N complete days, so recording
+# length cannot drive differences in rhythm metrics.
+depresjon_equal_days: 7

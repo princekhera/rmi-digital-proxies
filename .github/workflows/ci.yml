@@ -7,7 +7,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
-      - run: pip install snakemake pandas numpy scipy scikit-learn statsmodels pytest
+      - run: pip install snakemake pandas numpy scipy scikit-learn statsmodels matplotlib pytest
       - run: pytest -q tests
       - run: python tests/make_synthetic.py
       - run: snakemake -c2 --configfile config/test.yaml

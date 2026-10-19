@@ -186,30 +186,72 @@ def hedges_g_boot(a, b, n_boot=2000, seed=0):
 
 
 def partial_spearman_boot(x, y, z, n_boot=2000, seed=0):
-    """Spearman correlation between x and y after removing a binary or
-    numeric covariate z: rank all three, regress the ranks of x and y on the
-    rank of z, correlate the residuals. Bootstrap CI over participants."""
-    x, y, z = (np.asarray(v, dtype=float) for v in (x, y, z))
-    m = ~(np.isnan(x) | np.isnan(y) | np.isnan(z))
+    """Spearman partial correlation of x and y given covariate(s) z: rank
+    x, y and continuous columns of z, regress the ranks of x and y on z, and
+    correlate the residuals. Bootstrap CI; p from a t approximation losing one df per
+    covariate."""
+    x, y = np.asarray(x, dtype=float), np.asarray(y, dtype=float)
+    z = np.asarray(z, dtype=float)
+    z = z.reshape(-1, 1) if z.ndim == 1 else z
+    m = ~(np.isnan(x) | np.isnan(y) | np.isnan(z).any(axis=1))
     x, y, z = x[m], y[m], z[m]
-    if len(x) < 8 or np.unique(z).size < 2:
+    k = z.shape[1]
+    ok = lambda zz: all(np.unique(zz[:, j]).size > 1 for j in range(zz.shape[1]))
+    if len(x) < 8 + k or not ok(z):
         return np.nan, np.nan, np.nan, np.nan, len(x)
 
     def pr(x, y, z):
-        rx, ry, rz = (stats.rankdata(v) for v in (x, y, z))
-        Z = np.column_stack([np.ones_like(rz), rz])
+        # Rank x, y AND any continuous covariate (a binary one is unchanged
+        # by ranking): Spearman partial correlation = Pearson partial
+        # correlation on ranks. Regressing ranks on a raw continuous
+        # covariate leaves part of the confounding in place.
+        rx, ry = stats.rankdata(x), stats.rankdata(y)
+        zr = np.column_stack([stats.rankdata(z[:, j]) if np.unique(z[:, j]).size > 2 else z[:, j]
+                              for j in range(z.shape[1])])
+        Z = np.column_stack([np.ones(len(x)), zr])
         ex = rx - Z @ np.linalg.lstsq(Z, rx, rcond=None)[0]
         ey = ry - Z @ np.linalg.lstsq(Z, ry, rcond=None)[0]
-        return stats.pearsonr(ex, ey)
+        return np.corrcoef(ex, ey)[0, 1]
 
-    r, p = pr(x, y, z)
+    est = pr(x, y, z)
+    n, dof = len(x), len(x) - 2 - k
+    t = est * np.sqrt(dof / max(1 - est ** 2, 1e-12))
+    p = 2 * stats.t.sf(abs(t), dof)
     rng = np.random.default_rng(seed)
     boots = []
     for _ in range(n_boot):
-        i = rng.integers(0, len(x), len(x))
-        if np.unique(z[i]).size > 1 and np.unique(x[i]).size > 2 and np.unique(y[i]).size > 2:
-            boots.append(pr(x[i], y[i], z[i])[0])
-    if not boots:
-        return float(r), np.nan, np.nan, float(p), len(x)
+        i = rng.integers(0, n, n)
+        if ok(z[i]) and np.unique(x[i]).size > 1 and np.unique(y[i]).size > 1:
+            boots.append(pr(x[i], y[i], z[i]))
     lo, hi = np.nanpercentile(boots, [2.5, 97.5])
-    return float(r), float(lo), float(hi), float(p), len(x)
+    return float(est), float(lo), float(hi), float(p), n
+
+
+def prepare_design(df, outcome, feature, lagged=False, uid="uid"):
+    """Same data preparation as fit_within_between: standardised outcome,
+    between (fb) and within (fw) parts of the feature, and today's
+    within-person outcome when lagged. Returns (data, fixed-effects formula)."""
+    y = f"{outcome}_next" if lagged else outcome
+    cols = [uid, y, feature] + ([outcome] if lagged else [])
+    d = df[cols].dropna().copy()
+    d["fb"], d["fw"] = within_between(d, feature, uid)
+    d["y"] = (d[y] - d[y].mean()) / d[y].std(ddof=1)
+    formula = "y ~ fb + fw"
+    if lagged:
+        _, d["yw_today"] = within_between(d, outcome, uid)
+        formula += " + yw_today"
+    return d, formula
+
+
+def fit_slope_model(d, formula, uid="uid"):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return smf.mixedlm(formula, d, groups=d[uid], re_formula="~fw").fit(reml=True, method=OPTIMISERS)
+
+
+def person_slopes(res):
+    """Each person's within-slope = fixed effect + their random deviation
+    (a shrunken estimate: people with few days are pulled toward the mean)."""
+    fe = res.fe_params["fw"]
+    out = {g: fe + float(re.iloc[-1]) for g, re in res.random_effects.items()}
+    return pd.Series(out, name="person_slope")

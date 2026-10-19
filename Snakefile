@@ -100,6 +100,7 @@ rule depresjon:
         metrics=f"{OUT}/tables/depresjon_rhythm_metrics.csv",
         tests=f"{OUT}/tables/depresjon_tests.csv",
         inpatient_summary=f"{OUT}/tables/depresjon_inpatient_summary.csv",
+        confound_summary=f"{OUT}/tables/depresjon_confound_summary.csv",
     params:
         src=SRC, dep_dir=DEP, cfg=config,
     script:
@@ -119,6 +120,24 @@ rule missingness:
         src=SRC, cfg=config,
     script:
         "workflow/scripts/missingness.py"
+
+
+rule slope_heterogeneity:
+    """Person-specific slopes for models with real slope variation: robustness
+    to extreme people, and whether PHQ-9 predicts a person's slope."""
+    input:
+        panel=rules.sl_panel.output.panel,
+        person=rules.sl_panel.output.person,
+        mixed=rules.mixed_models.output[0],
+    output:
+        slopes=f"{OUT}/tables/person_slopes.csv",
+        summary=f"{OUT}/tables/slope_heterogeneity.csv",
+        moderation=f"{OUT}/tables/slope_moderation_phq.csv",
+        plot=f"{OUT}/figures/person_slopes.png",
+    params:
+        src=SRC, cfg=config,
+    script:
+        "workflow/scripts/slope_heterogeneity.py"
 
 
 rule verify:
@@ -145,6 +164,9 @@ rule report:
         dep_tests=rules.depresjon.output.tests,
         dep_inpatient=rules.depresjon.output.inpatient_summary,
         miss=rules.missingness.output.tests,
+        slope_summary=rules.slope_heterogeneity.output.summary,
+        slope_mod=rules.slope_heterogeneity.output.moderation,
+        dep_confound=rules.depresjon.output.confound_summary,
         construct="config/construct_validity.tsv",
     output:
         f"{OUT}/report.md",

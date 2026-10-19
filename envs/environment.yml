@@ -8,4 +8,5 @@ dependencies:
   - scipy
   - scikit-learn
   - statsmodels>=0.14
+  - matplotlib
   - pytest

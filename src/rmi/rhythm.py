@@ -52,8 +52,16 @@ def m10_l5(x: pd.Series) -> tuple[float, float]:
     return float(m10), float(l5)
 
 
-def rhythm_summary(minute: pd.DataFrame) -> dict:
+def rhythm_summary(minute: pd.DataFrame, max_days: int | None = None) -> dict:
+    """Rhythm metrics from complete days. With max_days, only the first
+    max_days complete days are used, so people with long and short
+    recordings are compared on equal footing (IS is estimated less
+    reliably, and can be biased, when there are fewer days)."""
     h = complete_days(to_hourly(minute))
+    if max_days is not None:
+        if len(h) < max_days * 24:
+            return {k: np.nan for k in ("n_days", "mean_activity", "IS", "IV", "M10", "L5", "RA")}
+        h = h.iloc[: max_days * 24]
     m10, l5 = m10_l5(h) if len(h) else (np.nan, np.nan)
     return {
         "n_days": len(h) // 24,

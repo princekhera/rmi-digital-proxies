@@ -90,3 +90,20 @@ def test_partial_spearman_removes_confounder():
     raw = np.corrcoef(x, y)[0, 1]
     r, lo, hi, p, n = partial_spearman_boot(x, y, z, n_boot=200)
     assert raw > 0.8 and abs(r) < 0.2
+
+
+def test_rhythm_summary_equal_days_truncates_and_rejects_short():
+    from rmi.rhythm import rhythm_summary
+    t = pd.date_range("2020-01-01", periods=10 * 1440, freq="min")
+    minute = pd.DataFrame({"timestamp": t, "activity": np.tile(np.r_[np.zeros(720), np.ones(720)], 10)})
+    assert rhythm_summary(minute, max_days=7)["IS"] == pytest.approx(1.0)
+    assert np.isnan(rhythm_summary(minute, max_days=20)["IS"])
+
+
+def test_partial_spearman_removes_shared_confounder():
+    from rmi.models import partial_spearman_boot
+    rng = np.random.default_rng(3)
+    z = rng.normal(size=400)
+    x, y = z + 0.3 * rng.normal(size=400), z + 0.3 * rng.normal(size=400)
+    est = partial_spearman_boot(x, y, z, n_boot=200)[0]
+    assert abs(est) < 0.15

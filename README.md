@@ -1,4 +1,3 @@
-![CI](https://github.com/princekhera/rmi-digital-proxies/actions/workflows/ci.yml/badge.svg)
 # Digital proxies of reward, motivation and impulsivity
 
 A reproducible Snakemake pipeline that asks whether passive smartphone and
@@ -42,6 +41,13 @@ Depresjon raw ──────────────────────
   grid is scored both ways so a swapped mapping shows up. It also lists model rows that are identical
   at full precision, near-duplicate features (|r| > 0.95), and participants with the least data.
 - `results/tables/missingness_tests.csv`: does data completeness correlate with PHQ-9?
+- `results/tables/slope_heterogeneity.csv` and `figures/person_slopes.png`: for models where people
+  genuinely differ in their within-person slope, each person's slope, robustness to the two most
+  extreme people, and `slope_moderation_phq.csv`: whether PHQ-9 predicts a person's slope
+  (cross-level interaction).
+- Depresjon work-status and recording-length checks: rank partial correlations adjusting for work
+  (1 = working, 2 = unemployed/sick leave/pension) and recording days, and every metric recomputed
+  on each person's first 7 complete days.
 - Depresjon inpatient sensitivity: MADRS correlations adjusted for inpatient status (partial Spearman),
   inpatients vs outpatients, and outpatients vs controls, with FDR applied within that family.
 - `divergent` now fires only when within and between estimates have opposite signs **and** both CIs
