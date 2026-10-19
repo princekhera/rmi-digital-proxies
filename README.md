@@ -1,3 +1,4 @@
+![CI](https://github.com/princekhera/rmi-digital-proxies/actions/workflows/ci.yml/badge.svg)
 # Digital proxies of reward, motivation and impulsivity
 
 A reproducible Snakemake pipeline that asks whether passive smartphone and
